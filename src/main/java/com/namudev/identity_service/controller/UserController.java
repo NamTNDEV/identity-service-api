@@ -3,8 +3,12 @@ package com.namudev.identity_service.controller;
 import com.namudev.identity_service.dto.request.UserCreationRequest;
 import com.namudev.identity_service.dto.request.UserUpdateRequest;
 import com.namudev.identity_service.dto.response.ApiResponse;
+import com.namudev.identity_service.dto.response.UserResponse;
 import com.namudev.identity_service.entity.User;
 import com.namudev.identity_service.service.UserService;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -13,18 +17,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/users")
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@RequiredArgsConstructor
 public class UserController {
-    private final UserService userService;
-
-    @Autowired
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
+    UserService userService;
 
     @GetMapping()
-    ApiResponse<List<User>> getUserList(){
-        List<User> result = userService.getAllUsers();
-        ApiResponse<List<User>> response = new ApiResponse<>();
+    ApiResponse<List<UserResponse>> getUserList(){
+        List<UserResponse> result = userService.getAllUsers();
+        ApiResponse<List<UserResponse>> response = new ApiResponse<>();
         response.setData(result);
 //        response.setMessage("User list fetched successfully.");
         response.setCode(200);
@@ -32,9 +33,9 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    ApiResponse<User> getUserById(@PathVariable String id){
-        User result = userService.getUserById(id);
-        ApiResponse<User> response = new ApiResponse<>();
+    ApiResponse<UserResponse> getUserById(@PathVariable String id){
+        UserResponse result = userService.getUserById(id);
+        ApiResponse<UserResponse> response = new ApiResponse<>();
         response.setData(result);
 //        response.setMessage("User fetched successfully.");
         response.setCode(200);
