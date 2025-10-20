@@ -3,6 +3,8 @@ package com.namudev.identity_service.service;
 import com.namudev.identity_service.dto.request.UserCreationRequest;
 import com.namudev.identity_service.dto.request.UserUpdateRequest;
 import com.namudev.identity_service.entity.User;
+import com.namudev.identity_service.exception.AppException;
+import com.namudev.identity_service.exception.ErrorCode;
 import com.namudev.identity_service.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,12 +25,12 @@ public class UserService {
     }
 
     public User getUserById(String id) {
-        return userRepo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepo.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
     public User createUser(UserCreationRequest userRequest) {
         if(userRepo.existsByUsername(userRequest.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new AppException(ErrorCode.USER_EXISTED);
         }
 
         User user = new User();
@@ -53,6 +55,10 @@ public class UserService {
     }
 
     public void deleteUser(String id) {
+        boolean exists = userRepo.existsById(id);
+        if (!exists) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
         userRepo.deleteById(id);
     }
 

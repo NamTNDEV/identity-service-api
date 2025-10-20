@@ -2,6 +2,7 @@ package com.namudev.identity_service.controller;
 
 import com.namudev.identity_service.dto.request.UserCreationRequest;
 import com.namudev.identity_service.dto.request.UserUpdateRequest;
+import com.namudev.identity_service.dto.response.ApiResponse;
 import com.namudev.identity_service.entity.User;
 import com.namudev.identity_service.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,28 +22,53 @@ public class UserController {
     }
 
     @GetMapping()
-    List<User> getUserList(){
-        return userService.getAllUsers();
+    ApiResponse<List<User>> getUserList(){
+        List<User> result = userService.getAllUsers();
+        ApiResponse<List<User>> response = new ApiResponse<>();
+        response.setData(result);
+//        response.setMessage("User list fetched successfully.");
+        response.setCode(200);
+        return response;
     }
 
     @GetMapping("/{id}")
-    User getUserById(@PathVariable String id){
-        return userService.getUserById(id);
+    ApiResponse<User> getUserById(@PathVariable String id){
+        User result = userService.getUserById(id);
+        ApiResponse<User> response = new ApiResponse<>();
+        response.setData(result);
+//        response.setMessage("User fetched successfully.");
+        response.setCode(200);
+
+        return response;
     }
 
     @PostMapping()
-    User addUser(@RequestBody @Validated UserCreationRequest userRequest){
-        return userService.createUser(userRequest);
+    ApiResponse<User> addUser(@RequestBody @Validated UserCreationRequest userRequest){
+        User result = userService.createUser(userRequest);
+        ApiResponse<User> response = new ApiResponse<>();
+        response.setData(result);
+//        response.setMessage("User created successfully.");
+        response.setCode(201);
+        return response;
     }
 
     @PutMapping("/{id}")
-    User updateUser(@PathVariable String id, @RequestBody UserUpdateRequest userRequest){
-        return userService.updateUser(id, userRequest);
+    ApiResponse<User> updateUser(@PathVariable String id, @RequestBody UserUpdateRequest userRequest){
+        User result = userService.updateUser(id, userRequest);
+        ApiResponse<User> response = new ApiResponse<>();
+        response.setData(result);
+//        response.setMessage("User updated successfully.");
+        response.setCode(200);
+        return response;
     }
 
     @DeleteMapping("/{id}")
-    String deleteUser(@PathVariable String id){
+    ApiResponse<Void> deleteUser(@PathVariable String id){
         userService.deleteUser(id);
-        return "User has been deleted.";
+        ApiResponse<Void> response = new ApiResponse<>();
+        response.setData(null);
+        response.setMessage("User deleted successfully.");
+        response.setCode(200);
+        return response;
     }
 }
