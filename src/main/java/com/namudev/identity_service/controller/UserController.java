@@ -5,11 +5,11 @@ import com.namudev.identity_service.dto.request.UserUpdateRequest;
 import com.namudev.identity_service.dto.response.ApiResponse;
 import com.namudev.identity_service.dto.response.UserResponse;
 import com.namudev.identity_service.entity.User;
+import com.namudev.identity_service.mapper.UserMapper;
 import com.namudev.identity_service.service.UserService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,30 +21,32 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     UserService userService;
+    UserMapper userMapper;
 
     @GetMapping()
-    ApiResponse<List<UserResponse>> getUserList(){
-        List<UserResponse> result = userService.getAllUsers();
-        ApiResponse<List<UserResponse>> response = new ApiResponse<>();
-        response.setData(result);
-//        response.setMessage("User list fetched successfully.");
-        response.setCode(200);
-        return response;
+    ApiResponse<List<UserResponse>> getUserList() {
+        List<User> result = userService.getAllUsers();
+        List<UserResponse> userListResponse = result.stream().map(userMapper::toUserResponse).toList();
+        return ApiResponse.<List<UserResponse>>builder()
+                .code(200)
+                .data(userListResponse)
+//                .message("User list fetched successfully.")
+                .build();
     }
 
     @GetMapping("/{id}")
-    ApiResponse<UserResponse> getUserById(@PathVariable String id){
-        UserResponse result = userService.getUserById(id);
-        ApiResponse<UserResponse> response = new ApiResponse<>();
-        response.setData(result);
-//        response.setMessage("User fetched successfully.");
-        response.setCode(200);
-
-        return response;
+    ApiResponse<UserResponse> getUserById(@PathVariable String id) {
+        User result = userService.getUserById(id);
+        UserResponse userResponse = userMapper.toUserResponse(result);
+        return ApiResponse.<UserResponse>builder()
+                .code(200)
+                .data(userResponse)
+//                .message("User fetched successfully.")
+                .build();
     }
 
     @PostMapping()
-    ApiResponse<User> addUser(@RequestBody @Validated UserCreationRequest userRequest){
+    ApiResponse<User> addUser(@RequestBody @Validated UserCreationRequest userRequest) {
         User result = userService.createUser(userRequest);
         ApiResponse<User> response = new ApiResponse<>();
         response.setData(result);
@@ -54,7 +56,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    ApiResponse<User> updateUser(@PathVariable String id, @RequestBody UserUpdateRequest userRequest){
+    ApiResponse<User> updateUser(@PathVariable String id, @RequestBody UserUpdateRequest userRequest) {
         User result = userService.updateUser(id, userRequest);
         ApiResponse<User> response = new ApiResponse<>();
         response.setData(result);
@@ -64,7 +66,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    ApiResponse<Void> deleteUser(@PathVariable String id){
+    ApiResponse<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
         ApiResponse<Void> response = new ApiResponse<>();
         response.setData(null);

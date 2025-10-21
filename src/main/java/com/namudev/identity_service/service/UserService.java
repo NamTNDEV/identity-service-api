@@ -2,7 +2,6 @@ package com.namudev.identity_service.service;
 
 import com.namudev.identity_service.dto.request.UserCreationRequest;
 import com.namudev.identity_service.dto.request.UserUpdateRequest;
-import com.namudev.identity_service.dto.response.UserResponse;
 import com.namudev.identity_service.entity.User;
 import com.namudev.identity_service.exception.AppException;
 import com.namudev.identity_service.exception.ErrorCode;
@@ -11,7 +10,8 @@ import com.namudev.identity_service.repository.UserRepo;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -24,17 +24,16 @@ public class UserService {
     UserRepo userRepo;
     UserMapper userMapper;
 
-    public List<UserResponse> getAllUsers() {
-        List<User> users = userRepo.findAll();
-        List<UserResponse> userResponseList = new ArrayList<>();
-        for (User user : users) {
-            userResponseList.add(userMapper.toUserResponse(user));
-        }
-        return userResponseList;
+    public List<User> getAllUsers() {
+        return userRepo.findAll();
     }
 
-    public UserResponse getUserById(String id) {
-        return userMapper.toUserResponse(userRepo.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
+    public User getUserById(String id) {
+        return userRepo.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    public User getUserByUsername(String username) {
+        return userRepo.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
     }
 
     public User createUser(UserCreationRequest userRequest) {
@@ -42,6 +41,8 @@ public class UserService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
         User user =  userMapper.toUser(userRequest);
+        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepo.save(user);
     }
 
@@ -57,9 +58,5 @@ public class UserService {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
         userRepo.deleteById(id);
-    }
-
-    public boolean existsByUsername(String username) {
-        return userRepo.existsByUsername(username);
     }
 }
