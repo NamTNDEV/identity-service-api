@@ -4,6 +4,7 @@ import com.namudev.identity_service.dto.request.IntrospectRequest;
 import com.namudev.identity_service.dto.request.LoginRequest;
 import com.namudev.identity_service.dto.response.AuthResponse;
 import com.namudev.identity_service.entity.User;
+import com.namudev.identity_service.enums.Role;
 import com.namudev.identity_service.exception.AppException;
 import com.namudev.identity_service.exception.ErrorCode;
 import com.nimbusds.jose.*;
@@ -19,8 +20,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.Date;
+import java.util.Set;
+import java.util.StringJoiner;
 
 @Service
 @RequiredArgsConstructor
@@ -31,19 +35,30 @@ public class AuthService {
     @Value("${jwt.secret-key}")
     protected String SECRET_KEY;
 
-    private String generateToken(String username) {
+    private String buildScopeString(Set<String> roles) {
+        StringJoiner joiner = new StringJoiner(" ");
+        if(!CollectionUtils.isEmpty(roles)){
+            roles.forEach(joiner::add);
+            return joiner.toString();
+        } else {
+            return "";
+        }
+    }
+
+    private String generateToken(User user) {
         JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(username)
+                .subject(user.getUsername())
                 .issuer("com.namudev.identity_service")
                 .issueTime(new Date())
+                .claim("scope", buildScopeString(user.getRoles()))
                 .expirationTime(
                         new Date(System.currentTimeMillis() + 3600 * 1000)
                 )
                 .build();
         Payload payload = new Payload(claimsSet.toJSONObject());
         JWSObject jwsObject = new JWSObject(jwsHeader, payload);
-
+        System.out.println("Scopes::: " + buildScopeString(user.getRoles()));
         try {
             jwsObject.sign(new MACSigner(SECRET_KEY.getBytes()));
             return jwsObject.serialize();
@@ -74,7 +89,7 @@ public class AuthService {
         if (!isPasswordMatching) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
-        String token = generateToken(user.getUsername());
+        String token = generateToken(user);
         return AuthResponse.builder()
                 .token(token)
                 .authenticated(true)
