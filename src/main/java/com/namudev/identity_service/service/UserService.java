@@ -2,6 +2,7 @@ package com.namudev.identity_service.service;
 
 import com.namudev.identity_service.dto.request.UserCreationRequest;
 import com.namudev.identity_service.dto.request.UserUpdateRequest;
+import com.namudev.identity_service.dto.response.UserResponse;
 import com.namudev.identity_service.entity.User;
 import com.namudev.identity_service.enums.Role;
 import com.namudev.identity_service.exception.AppException;
@@ -11,6 +12,8 @@ import com.namudev.identity_service.repository.UserRepo;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +24,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class UserService {
     UserRepo userRepo;
     UserMapper userMapper;
@@ -62,5 +66,12 @@ public class UserService {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
         userRepo.deleteById(id);
+    }
+
+    public UserResponse getUserInfo() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Username : {}", username);
+        User user = getUserByUsername(username);
+        return userMapper.toUserResponse(user);
     }
 }

@@ -11,6 +11,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +28,7 @@ public class UserController {
     UserService userService;
     UserMapper userMapper;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping()
     ApiResponse<List<UserResponse>> getUserList() {
         List<User> result = userService.getAllUsers();
@@ -37,6 +40,7 @@ public class UserController {
                 .build();
     }
 
+//    @PostAuthorize("returnObject.data.username == authentication.name")
     @GetMapping("/{id}")
     ApiResponse<UserResponse> getUserById(@PathVariable String id) {
         User result = userService.getUserById(id);
@@ -76,5 +80,15 @@ public class UserController {
         response.setMessage("User deleted successfully.");
         response.setCode(200);
         return response;
+    }
+
+    @GetMapping("/me")
+    ApiResponse<UserResponse> getUserInfo() {
+        UserResponse userResponse = userService.getUserInfo();
+        return ApiResponse.<UserResponse>builder()
+                .code(200)
+                .data(userResponse)
+//                .message("User info fetched successfully.")
+                .build();
     }
 }
