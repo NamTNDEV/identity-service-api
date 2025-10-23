@@ -17,7 +17,11 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(4005, "Invalid username or password", HttpStatus.BAD_REQUEST),
     USER_NOT_FOUND(4006, "User not found", HttpStatus.NOT_FOUND),
     UNAUTHENTICATED(4007, "Unauthenticated", HttpStatus.UNAUTHORIZED),
-    UNAUTHORIZED(4008, "Unauthorized", HttpStatus.FORBIDDEN),;
+    UNAUTHORIZED(4008, "Unauthorized", HttpStatus.FORBIDDEN),
+    PERMISSION_NOT_FOUND(4009, "Permission not found", HttpStatus.NOT_FOUND),
+    PERMISSION_ALREADY_EXISTS(4010, "Permission already exists", HttpStatus.CONFLICT),
+    ROLE_NOT_FOUND(4011, "Role not found", HttpStatus.NOT_FOUND),
+    ROLE_ALREADY_EXISTS(4012, "Role already exists", HttpStatus.CONFLICT);
 
     int code;
     String message;
