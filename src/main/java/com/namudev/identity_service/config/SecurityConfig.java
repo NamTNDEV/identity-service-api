@@ -1,6 +1,5 @@
 package com.namudev.identity_service.config;
 
-import com.namudev.identity_service.enums.Role;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,8 +24,15 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableMethodSecurity
 public class SecurityConfig {
     private final String[] PUBLIC_URLS = {
+            "users/me",
             "/auth/login",
-//            "/users/**",
+    };
+
+    private final String[] PRIVATE_URLS = {
+            "/users/**",
+            "/roles/**",
+            "/permissions/**",
+            "/auth/introspect",
     };
 
     @Value("${jwt.secret-key}")
@@ -36,9 +42,9 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(
                 request -> request
+                        .requestMatchers(HttpMethod.GET, PUBLIC_URLS).permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_URLS).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/permissions/**").hasRole(Role.ADMIN.name())
-                        .requestMatchers(HttpMethod.GET, "/roles/**").hasRole(Role.ADMIN.name())
+                        .requestMatchers(PRIVATE_URLS).hasRole("ADMIN")
                         .anyRequest().authenticated()
         );
 
@@ -58,7 +64,7 @@ public class SecurityConfig {
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
         return jwtAuthenticationConverter;

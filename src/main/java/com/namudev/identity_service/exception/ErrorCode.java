@@ -21,7 +21,8 @@ public enum ErrorCode {
     PERMISSION_NOT_FOUND(4009, "Permission not found", HttpStatus.NOT_FOUND),
     PERMISSION_ALREADY_EXISTS(4010, "Permission already exists", HttpStatus.CONFLICT),
     ROLE_NOT_FOUND(4011, "Role not found", HttpStatus.NOT_FOUND),
-    ROLE_ALREADY_EXISTS(4012, "Role already exists", HttpStatus.CONFLICT);
+    ROLE_ALREADY_EXISTS(4012, "Role already exists", HttpStatus.CONFLICT),
+    INVALID_DOB(4013, "Date of birth indicates user is under the minimum age", HttpStatus.BAD_REQUEST);
 
     int code;
     String message;

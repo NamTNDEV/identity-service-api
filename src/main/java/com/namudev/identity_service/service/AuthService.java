@@ -3,8 +3,8 @@ package com.namudev.identity_service.service;
 import com.namudev.identity_service.dto.request.IntrospectRequest;
 import com.namudev.identity_service.dto.request.LoginRequest;
 import com.namudev.identity_service.dto.response.AuthResponse;
+import com.namudev.identity_service.entity.Role;
 import com.namudev.identity_service.entity.User;
-import com.namudev.identity_service.enums.Role;
 import com.namudev.identity_service.exception.AppException;
 import com.namudev.identity_service.exception.ErrorCode;
 import com.nimbusds.jose.*;
@@ -35,11 +35,18 @@ public class AuthService {
     @Value("${jwt.secret-key}")
     protected String SECRET_KEY;
 
-    private String buildScopeString(Set<String> roles) {
-        StringJoiner joiner = new StringJoiner(" ");
-        if(!CollectionUtils.isEmpty(roles)){
-            roles.forEach(joiner::add);
-            return joiner.toString();
+    private String buildScopeString(Set<Role> roles) {
+        StringJoiner joiner = new StringJoiner("");
+        if (!CollectionUtils.isEmpty(roles)) {
+            roles.forEach(role -> {
+                joiner.add("ROLE_" + role.getName() + " ");
+                if (!role.getPermissions().isEmpty()) {
+                    role.getPermissions().forEach(permission -> {
+                        joiner.add(permission.getName() + " ");
+                    });
+                }
+            });
+            return joiner.toString().trim();
         } else {
             return "";
         }
@@ -53,12 +60,11 @@ public class AuthService {
                 .issueTime(new Date())
                 .claim("scope", buildScopeString(user.getRoles()))
                 .expirationTime(
-                        new Date(System.currentTimeMillis() + 3600 * 1000)
+                        new Date(System.currentTimeMillis() + 3600 * 1000) // 1 hour expiration
                 )
                 .build();
         Payload payload = new Payload(claimsSet.toJSONObject());
         JWSObject jwsObject = new JWSObject(jwsHeader, payload);
-        System.out.println("Scopes::: " + buildScopeString(user.getRoles()));
         try {
             jwsObject.sign(new MACSigner(SECRET_KEY.getBytes()));
             return jwsObject.serialize();
@@ -80,7 +86,9 @@ public class AuthService {
             System.out.println("Error validating the token: " + e.getMessage());
             return false;
         }
-    };
+    }
+
+    ;
 
     public AuthResponse authenticate(LoginRequest loginRequest) {
         User user = userService.getUserByUsername(loginRequest.getUsername());
@@ -94,5 +102,7 @@ public class AuthService {
                 .token(token)
                 .authenticated(true)
                 .build();
-    };
+    }
+
+    ;
 }

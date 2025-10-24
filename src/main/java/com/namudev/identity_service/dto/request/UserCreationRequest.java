@@ -1,5 +1,7 @@
 package com.namudev.identity_service.dto.request;
 
+import com.namudev.identity_service.validator.DobConstraint;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -24,7 +26,7 @@ public class UserCreationRequest {
 
     String lastName;
 
+    @DobConstraint
+    @NotNull
     LocalDate dob;
-
-    Set<String> roles;
 }

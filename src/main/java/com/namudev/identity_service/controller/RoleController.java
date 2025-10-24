@@ -8,6 +8,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("hasRole('ADMIN')")
 public class RoleController {
     RoleService roleService;
 
@@ -33,6 +35,7 @@ public class RoleController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('' + T(com.namudev.identity_service.enums.RoleEnum).ADMIN.name())")
     public ApiResponse<List<RoleResponse>> getListRole() {
         log.info("Get all roles endpoint called");
         return ApiResponse.<List<RoleResponse>>builder()
@@ -51,6 +54,18 @@ public class RoleController {
         return ApiResponse.<Void>builder()
                 .code(200)
                 .message("Role deleted successfully")
+                .build();
+    }
+
+    @PutMapping("/{name}")
+    public ApiResponse<RoleResponse> updateRole(@PathVariable("name") String roleName, @RequestBody RoleRequest roleRequest) {
+        log.info("Update role endpoint called for role: {}", roleName);
+        return ApiResponse.<RoleResponse>builder()
+                .code(200)
+                .message("Role updated successfully")
+                .data(
+                        roleService.updateRole(roleName, roleRequest)
+                )
                 .build();
     }
 }

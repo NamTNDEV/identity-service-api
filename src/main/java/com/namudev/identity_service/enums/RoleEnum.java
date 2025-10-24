@@ -1,6 +1,6 @@
 package com.namudev.identity_service.enums;
 
-public enum Role {
+public enum RoleEnum {
     USER,
     ADMIN
 }

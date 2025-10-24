@@ -23,7 +23,7 @@ public class PermissionController {
     @PostMapping
     ApiResponse<PermissionResponse> addPermission(@RequestBody PermissionRequest permissionRequest) {
       return ApiResponse.<PermissionResponse>builder()
-              .code(200)
+              .code(201)
               .message("Permission added successfully")
               .data(
                       permissionService.create(permissionRequest)

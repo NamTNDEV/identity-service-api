@@ -29,14 +29,12 @@ public class RoleService {
 
     public RoleResponse create(RoleRequest roleRequest) {
         if(roleRepo.existsByName(roleRequest.getName())) {
-            log.error("Role {} already exists", roleRequest.getName());
             throw new AppException(ErrorCode.ROLE_ALREADY_EXISTS);
         }
         Role role = roleMapper.toRole(roleRequest);
         Set<Permission> permissions = new HashSet<>(permissionService.getPermissionsByNames(roleRequest.getPermissions()));
         role.setPermissions(permissions);
         roleRepo.save(role);
-        log.info("Role {} created successfully", role.getName());
         return roleMapper.toRoleResponse(role);
     }
 
@@ -47,10 +45,37 @@ public class RoleService {
     public void deleteRoleByName(String roleName) {
         Role role = roleRepo.findByName(roleName)
                 .orElseThrow(() -> {
-                    log.error("Role {} not found", roleName);
                     return new AppException(ErrorCode.ROLE_NOT_FOUND);
                 });
         roleRepo.delete(role);
         log.info("Role {} deleted successfully", roleName);
+    }
+
+    public Role getRoleByName(String roleName) {
+        return roleRepo.findByName(roleName)
+                .orElseThrow(() -> {
+                    return new AppException(ErrorCode.ROLE_NOT_FOUND);
+                });
+    }
+
+    public List<Role> getRolesByNames(Set<String> roleNames) {
+        List<Role> roles = roleRepo.findAllById(roleNames);
+        if(roles.size() != roleNames.size()) {
+            log.error("One or more roles not found: {}", roleNames);
+            throw new AppException(ErrorCode.ROLE_NOT_FOUND);
+        }
+        return roles;
+    }
+
+    public RoleResponse updateRole(String roleName, RoleRequest roleRequest) {
+        Role role = roleRepo.findByName(roleName)
+                .orElseThrow(() -> {
+                    return new AppException(ErrorCode.ROLE_NOT_FOUND);
+                });
+        Set<Permission> willAddedPermissions = new HashSet<>(permissionService.getPermissionsByNames(roleRequest.getPermissions()));
+        role.setPermissions(willAddedPermissions);
+        roleRepo.save(role);
+        log.info("Role {} updated successfully", roleName);
+        return roleMapper.toRoleResponse(role);
     }
 }

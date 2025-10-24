@@ -1,6 +1,8 @@
 package com.namudev.identity_service.entity;
 
+import com.namudev.identity_service.validator.DobConstraint;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -31,7 +33,9 @@ public class User {
     @Column(name = "last_name")
     String lastName;
 
+    @NotNull
     LocalDate dob;
 
-    Set<String> roles;
+    @ManyToMany
+    Set<Role> roles;
 }
