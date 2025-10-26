@@ -14,7 +14,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Constraint(validatedBy = {DobValidator.class})
 public @interface DobConstraint {
-    int minAge() default 8;
+    int min() default 8;
 
     String message() default "INVALID_DOB";
 

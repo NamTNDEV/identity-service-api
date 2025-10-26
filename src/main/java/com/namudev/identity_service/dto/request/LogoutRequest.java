@@ -5,12 +5,12 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@Getter
+@Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Setter
-@Getter
-public class IntrospectRequest {
+public class LogoutRequest {
     @NotBlank(message = "INVALID_TOKEN")
     String token;
 }

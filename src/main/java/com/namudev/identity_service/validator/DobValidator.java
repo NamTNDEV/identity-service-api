@@ -17,6 +17,6 @@ public class DobValidator implements ConstraintValidator<DobConstraint, LocalDat
     @Override
     public void initialize(DobConstraint constraintAnnotation) {
         ConstraintValidator.super.initialize(constraintAnnotation);
-        this.minAge = constraintAnnotation.minAge();
+        this.minAge = constraintAnnotation.min();
     }
 }

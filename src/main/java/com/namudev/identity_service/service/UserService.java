@@ -41,7 +41,7 @@ public class UserService {
     }
 
     public User getUserByUsername(String username) {
-        return userRepo.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        return userRepo.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
     public User createUser(UserCreationRequest userRequest) {
