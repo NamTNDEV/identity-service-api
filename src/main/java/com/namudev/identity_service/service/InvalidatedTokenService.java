@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -19,13 +20,16 @@ import java.util.Optional;
 public class InvalidatedTokenService {
     InvalidatedTokenRepo invalidatedTokenRepo;
 
+    @Transactional
     public void createInvalidatedToken(String jti, Instant expiration) {
-        invalidatedTokenRepo.save(
-            InvalidatedToken.builder()
-                .id(jti)
-                .expirationDate(expiration)
-                .build()
-        );
+        if(!invalidatedTokenRepo.existsById(jti)) {
+            invalidatedTokenRepo.save(
+                    InvalidatedToken.builder()
+                            .id(jti)
+                            .expirationDate(expiration)
+                            .build()
+            );
+        }
     }
 
     public Optional<InvalidatedToken> getInvalidatedTokenById(String id) {
@@ -34,5 +38,10 @@ public class InvalidatedTokenService {
 
     public boolean isInvalidated(String jti) {
         return invalidatedTokenRepo.existsById(jti);
+    }
+
+    @Transactional
+    public int purgeExpiredToken() {
+        return invalidatedTokenRepo.deleteAllExpiredTokens(Instant.now());
     }
 }
