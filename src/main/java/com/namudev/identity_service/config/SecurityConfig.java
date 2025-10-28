@@ -2,6 +2,8 @@ package com.namudev.identity_service.config;
 
 import com.namudev.identity_service.service.InvalidatedTokenService;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,29 +25,35 @@ import org.springframework.security.web.SecurityFilterChain;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 
-import static com.namudev.identity_service.service.AuthService.ISSUER;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
+@FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 public class SecurityConfig {
-    private final InvalidatedTokenService invalidatedTokenService;
+    InvalidatedTokenService invalidatedTokenService;
 
-
-    private final String[] PUBLIC_URLS = {
+    String[] PUBLIC_URLS = {
             "users/me",
-            "/auth/**",
+            "/auth/login",
+            "/auth/refresh-token",
     };
 
-    private final String[] PRIVATE_URLS = {
+    String[] PRIVATE_URLS = {
+            "auth/introspect",
             "/users/**",
             "/roles/**",
             "/permissions/**",
     };
 
-    @Value("${jwt.secret-key}")
-    private String SECRET_KEY_B64;
+    @NonFinal
+    @Value("${jwt.issuer}")
+    private String ISSUER;
+
+    @NonFinal
+    @Value("${jwt.access.secret-key}")
+    private String ACCESS_SECRET_KEY_B64;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
@@ -53,6 +61,7 @@ public class SecurityConfig {
                 request -> request
                         .requestMatchers(HttpMethod.GET, PUBLIC_URLS).permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_URLS).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/logout").authenticated()
                         .requestMatchers(PRIVATE_URLS).hasRole("ADMIN")
                         .anyRequest().authenticated()
         );
@@ -81,7 +90,7 @@ public class SecurityConfig {
 
     @Bean
     JwtDecoder jwtDecoder() {
-        byte[] secretKeyBytes = Base64.getDecoder().decode(SECRET_KEY_B64);
+        byte[] secretKeyBytes = Base64.getDecoder().decode(ACCESS_SECRET_KEY_B64);
         SecretKeySpec secretKey = new SecretKeySpec(secretKeyBytes, MacAlgorithm.HS512.toString());
         NimbusJwtDecoder nimbus = NimbusJwtDecoder
                 .withSecretKey(secretKey)

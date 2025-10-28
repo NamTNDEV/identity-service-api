@@ -80,4 +80,8 @@ public class UserService {
         User user = getUserByUsername(username);
         return userMapper.toUserResponse(user);
     }
+
+    public boolean isUserExist(String username) {
+        return userRepo.existsByUsername(username);
+    }
 }

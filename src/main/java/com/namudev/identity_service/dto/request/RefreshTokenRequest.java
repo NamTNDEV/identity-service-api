@@ -10,7 +10,7 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class LogoutRequest {
+public class RefreshTokenRequest {
     @NotBlank(message = "INVALID_TOKEN")
     String token;
 }

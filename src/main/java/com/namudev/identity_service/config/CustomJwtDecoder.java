@@ -27,14 +27,11 @@ public record CustomJwtDecoder(
         String jti = jwt.getId();
         if(jti != null && invalidatedTokenService.isInvalidated(jti)) {
             log.error("Invalidated token used with jti: {}", jti);
-//            throw new JwtException("Token has been invalidated");
-
             OAuth2Error error = new OAuth2Error(
                     "token_invalidated",
                     "Token has been invalidated",
                     null
             );
-
             throw new OAuth2AuthenticationException(error);
         }
         return jwt;

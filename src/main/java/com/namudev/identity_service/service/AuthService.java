@@ -2,11 +2,12 @@ package com.namudev.identity_service.service;
 
 import com.namudev.identity_service.dto.request.IntrospectRequest;
 import com.namudev.identity_service.dto.request.LoginRequest;
-import com.namudev.identity_service.dto.request.LogoutRequest;
+import com.namudev.identity_service.dto.request.RefreshTokenRequest;
 import com.namudev.identity_service.dto.response.AuthResponse;
 import com.namudev.identity_service.entity.InvalidatedToken;
 import com.namudev.identity_service.entity.Role;
 import com.namudev.identity_service.entity.User;
+import com.namudev.identity_service.enums.TokenType;
 import com.namudev.identity_service.exception.AppException;
 import com.namudev.identity_service.exception.ErrorCode;
 import com.nimbusds.jose.*;
@@ -34,12 +35,25 @@ import java.util.*;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthService {
-    public static String ISSUER = "com.namudev.identity_service";
-    static Duration TOKEN_TTL = Duration.ofHours(1);
+    @NonFinal
+    @Value("${jwt.issuer}")
+    String ISSUER;
 
     @NonFinal
-    @Value("${jwt.secret-key}")
-    String SECRET_KEY_B64;
+    @Value("${jwt.access.ttl}")
+    Duration ACCESS_TOKEN_TTL;
+
+    @NonFinal
+    @Value("${jwt.access.secret-key}")
+    String ACCESS_SECRET_KEY_B64;
+
+    @NonFinal
+    @Value("${jwt.refresh.ttl}")
+    Duration REFRESH_TOKEN_TTL;
+
+    @NonFinal
+    @Value("${jwt.refresh.secret-key}")
+    String REFRESH_SECRET_KEY_B64;
 
     UserService userService;
     InvalidatedTokenService invalidatedTokenService;
@@ -60,50 +74,63 @@ public class AuthService {
         return joiner.toString();
     }
 
-    private String generateToken(User user) {
-        var now = Instant.now();
-        JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS512);
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+    private String generateAccessToken(User user) {
+        Instant now = Instant.now();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(user.getUsername())
                 .issuer(ISSUER)
                 .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plus(ACCESS_TOKEN_TTL)))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("scope", buildScopeString(user.getRoles()))
-                .expirationTime(Date.from(now.plus(TOKEN_TTL)))
+                .claim("typ", TokenType.ACCESS.name())
                 .build();
-        // Cách 1:
-        Payload payload = new Payload(claimsSet.toJSONObject());
-        JWSObject jwsObject = new JWSObject(jwsHeader, payload);
+        return signHS512Token(claims, ACCESS_SECRET_KEY_B64);
+    }
 
-        // Cách 2:
-        // SignedJWT signedJWT = new SignedJWT(jwsHeader, claimsSet);
+    private String generateRefreshToken(User user) {
+        Instant now = Instant.now();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject(user.getUsername())
+                .issuer(ISSUER)
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plus(REFRESH_TOKEN_TTL)))
+                .jwtID(UUID.randomUUID().toString())
+                .claim("typ", TokenType.REFRESH.name())
+                .build();
+        return signHS512Token(claims, REFRESH_SECRET_KEY_B64);
+    }
 
+    private String signHS512Token(JWTClaimsSet claims, String secretKeyB64) {
+        JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS512);
+        SignedJWT jwt = new SignedJWT(jwsHeader, claims);
         try {
-            byte[] secretKeyBytes = Base64.getDecoder().decode(SECRET_KEY_B64);
-            jwsObject.sign(new MACSigner(secretKeyBytes));
-            return jwsObject.serialize();
+            byte[] secretKeyBytes = Base64.getDecoder().decode(secretKeyB64);
+            jwt.sign(new MACSigner(secretKeyBytes));
+            return jwt.serialize();
         } catch (JOSEException e) {
-            throw new RuntimeException("Error signing token", e);
+            throw new RuntimeException(e);
         }
     }
 
-    private SignedJWT verifyToken(String token) {
+    private SignedJWT verifyToken(String token, String secretKeyB64, TokenType expectedType) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
 
-            // 1. Enforce algorithm
+            // 1. Algorithm
             var alg = signedJWT.getHeader().getAlgorithm();
-            if (!alg.equals(JWSAlgorithm.HS512)) {
-                log.error("Invalid JWT algorithm: {}", alg);
+
+            if (!JWSAlgorithm.HS512.equals(alg)) {
+                log.error(":: Invalid JWT algorithm ::");
                 throw new AppException(ErrorCode.INVALID_TOKEN);
             }
 
-            // 2. Verify signature
-            byte[] secretKeyBytes = Base64.getDecoder().decode(SECRET_KEY_B64);
+            // 2. Signature
+            byte[] secretKeyBytes = Base64.getDecoder().decode(secretKeyB64);
             JWSVerifier verifier = new MACVerifier(secretKeyBytes);
             boolean sigOk = signedJWT.verify(verifier);
             if (!sigOk) {
-                log.error("Token signature verification failed");
+                log.error(":: Invalid token signature ::");
                 throw new AppException(ErrorCode.INVALID_SIGNATURE);
             }
 
@@ -111,24 +138,30 @@ public class AuthService {
             var claims = signedJWT.getJWTClaimsSet();
 
             // 3.a. Expiration time
-            var now = Instant.now();
             Instant expDate = claims.getExpirationTime().toInstant();
-            if (expDate != null && now.isAfter(expDate)) {
-                log.error("Token expired at {}", expDate);
+            if (expDate != null && Instant.now().isAfter(expDate)) {
+                log.error(":: Token expired at {} ::", expDate);
                 throw new AppException(ErrorCode.TOKEN_EXPIRED);
             }
 
             // 3.b. Issuer
             String issuer = claims.getIssuer();
             if (issuer != null && !ISSUER.equals(issuer)) {
-                log.error("Invalid issuer: {}", issuer);
+                log.error(":: Invalid issuer: {} ::", issuer);
                 throw new AppException(ErrorCode.INVALID_TOKEN_ISSUER);
+            }
+
+            // 3.c. Enforce typ
+            String type = claims.getStringClaim("typ");
+            if (!expectedType.name().equals(type)) {
+                log.error(":: Invalid token type: {} ::", type);
+                throw new AppException(ErrorCode.INVALID_TOKEN_TYPE);
             }
 
             // 4. Check if token is invalidated
             String jti = claims.getJWTID();
             Optional<InvalidatedToken> invalidatedTokenOpt = invalidatedTokenService.getInvalidatedTokenById(jti);
-            if(invalidatedTokenOpt.isPresent()) {
+            if (invalidatedTokenOpt.isPresent()) {
                 log.error("Token has been invalidated: {}", jti);
                 throw new AppException(ErrorCode.TOKEN_INVALIDATED);
             }
@@ -150,9 +183,25 @@ public class AuthService {
         }
     }
 
+    private SignedJWT verifyAccessToken(String token) {
+        return verifyToken(token, ACCESS_SECRET_KEY_B64, TokenType.ACCESS);
+    }
+
+    private SignedJWT verifyRefreshToken(String token) {
+        return verifyToken(token, REFRESH_SECRET_KEY_B64, TokenType.REFRESH);
+    }
+
+    private String extractBearer(String bearerToken) {
+        if (bearerToken == null || !bearerToken.startsWith("Bearer ")) {
+            log.error("Invalid Authorization header format");
+            throw new AppException(ErrorCode.INVALID_AUTH_HEADER);
+        }
+        return bearerToken.substring(7);
+    }
+
     public boolean introspectToken(IntrospectRequest introspectRequest) {
         String token = introspectRequest.getToken();
-        verifyToken(token);
+        verifyAccessToken(token);
         return true;
     }
 
@@ -163,27 +212,58 @@ public class AuthService {
         if (!isPasswordMatching) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
-        String token = generateToken(user);
+        String accessToken = generateAccessToken(user);
+        String refreshToken = generateRefreshToken(user);
         return AuthResponse.builder()
-                .token(token)
-                .authenticated(true)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .build();
     }
 
-    public void logout(LogoutRequest logoutRequest) {
+    public void logout(String bearerToken) {
         log.info("::: Processing logout for token ::");
-        String token = logoutRequest.getToken();
-        SignedJWT signedJWT = verifyToken(token);
+        String token = extractBearer(bearerToken);
+        SignedJWT signedJWT = verifyAccessToken(token);
 
         try {
             String jti = signedJWT.getJWTClaimsSet().getJWTID();
             var expDate = signedJWT.getJWTClaimsSet().getExpirationTime().toInstant();
-
-            invalidatedTokenService.createInvalidatedToken(jti, expDate);
+            if (!invalidatedTokenService.isInvalidated(jti)) {
+                invalidatedTokenService.createInvalidatedToken(jti, expDate);
+            } else {
+                log.warn("Token already invalidated: {}", jti);
+            }
         } catch (ParseException e) {
             log.error("Invalid JWT ID: {}", e.getMessage());
             throw new AppException(ErrorCode.MALFORMED_TOKEN);
         }
+    }
 
+    public AuthResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
+        log.info("::: Processing refresh token for token ::");
+        try {
+            SignedJWT signedJWT = verifyRefreshToken(refreshTokenRequest.getToken());
+            String jti = signedJWT.getJWTClaimsSet().getJWTID();
+            var expDate = signedJWT.getJWTClaimsSet().getExpirationTime().toInstant();
+            invalidatedTokenService.createInvalidatedToken(jti, expDate);
+
+            String username = signedJWT.getJWTClaimsSet().getSubject();
+            User existedUser = userService.getUserByUsername(username);
+            if(existedUser == null) {
+                log.error("Invalid username for token :: {}", username);
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            String accessToken= generateAccessToken(existedUser);
+            String refreshToken = generateRefreshToken(existedUser);
+
+            return AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .build();
+        } catch (ParseException e) {
+            log.error("Invalid JWT Subject: {}", e.getMessage());
+            throw new AppException(ErrorCode.MALFORMED_TOKEN);
+        }
     }
 }

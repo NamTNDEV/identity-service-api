@@ -10,6 +10,6 @@ import lombok.experimental.FieldDefaults;
 @Setter
 @Getter
 public class AuthResponse {
-    boolean authenticated;
-    String token;
+    String accessToken;
+    String refreshToken;
 }

@@ -32,6 +32,8 @@ public enum ErrorCode {
     TOKEN_EXPIRED(4203, "Token has expired", HttpStatus.UNAUTHORIZED),
     INVALID_TOKEN_ISSUER(4204, "Invalid token issuer", HttpStatus.UNAUTHORIZED),
     TOKEN_INVALIDATED(4205, "Token has been invalidated", HttpStatus.UNAUTHORIZED),
+    INVALID_TOKEN_TYPE(4206, "Invalid token type", HttpStatus.UNAUTHORIZED),
+    INVALID_AUTH_HEADER(4207, "Invalid Authorization header", HttpStatus.UNAUTHORIZED),
 
     /* =========================
      * 43xx – Domain/Resource state
