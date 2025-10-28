@@ -5,12 +5,17 @@ import com.namudev.identity_service.entity.User;
 import com.namudev.identity_service.repository.PermissionRepo;
 import com.namudev.identity_service.repository.RoleRepo;
 import com.namudev.identity_service.repository.UserRepo;
+import com.namudev.identity_service.service.RedisTestService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionCommands;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.HashSet;
@@ -21,8 +26,23 @@ import java.util.Set;
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class AppConfig {
-    PasswordEncoder passwordEncoder;
     static final String ADMIN = "admin";
+
+    PasswordEncoder passwordEncoder;
+    RedisTestService redisTestService;
+
+    @Bean
+    CommandLineRunner redisPing(StringRedisTemplate srt) {
+        return args -> {
+            try {
+                var pong = srt.execute((RedisCallback<Object>) RedisConnectionCommands::ping);
+                System.out.println("Redis PING => " + pong);
+//                redisTestService.testBasicOps();
+            } catch (Exception e) {
+                System.err.println("❌ Redis connect failed: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            }
+        };
+    }
 
     @Bean
     public ApplicationRunner applicationRunner(UserRepo userRepo, RoleRepo roleRepo, PermissionRepo permissionRepo) {

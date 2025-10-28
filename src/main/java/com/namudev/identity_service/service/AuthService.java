@@ -200,6 +200,7 @@ public class AuthService {
     }
 
     public boolean introspectToken(IntrospectRequest introspectRequest) {
+        log.debug(":: Processing token introspection ::");
         String token = introspectRequest.getToken();
         verifyAccessToken(token);
         return true;
