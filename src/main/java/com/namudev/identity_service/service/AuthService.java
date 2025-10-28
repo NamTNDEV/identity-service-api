@@ -4,7 +4,6 @@ import com.namudev.identity_service.dto.request.IntrospectRequest;
 import com.namudev.identity_service.dto.request.LoginRequest;
 import com.namudev.identity_service.dto.request.RefreshTokenRequest;
 import com.namudev.identity_service.dto.response.AuthResponse;
-import com.namudev.identity_service.entity.InvalidatedToken;
 import com.namudev.identity_service.entity.Role;
 import com.namudev.identity_service.entity.User;
 import com.namudev.identity_service.enums.TokenType;
@@ -56,7 +55,7 @@ public class AuthService {
     String REFRESH_SECRET_KEY_B64;
 
     UserService userService;
-    InvalidatedTokenService invalidatedTokenService;
+    RedisTokenBlacklist tokenBlacklist;
 
     private String buildScopeString(Set<Role> roles) {
         if (roles == null || roles.isEmpty()) {
@@ -76,28 +75,13 @@ public class AuthService {
 
     private String generateAccessToken(User user) {
         Instant now = Instant.now();
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject(user.getUsername())
-                .issuer(ISSUER)
-                .issueTime(Date.from(now))
-                .expirationTime(Date.from(now.plus(ACCESS_TOKEN_TTL)))
-                .jwtID(UUID.randomUUID().toString())
-                .claim("scope", buildScopeString(user.getRoles()))
-                .claim("typ", TokenType.ACCESS.name())
-                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder().subject(user.getUsername()).issuer(ISSUER).issueTime(Date.from(now)).expirationTime(Date.from(now.plus(ACCESS_TOKEN_TTL))).jwtID(UUID.randomUUID().toString()).claim("scope", buildScopeString(user.getRoles())).claim("typ", TokenType.ACCESS.name()).build();
         return signHS512Token(claims, ACCESS_SECRET_KEY_B64);
     }
 
     private String generateRefreshToken(User user) {
         Instant now = Instant.now();
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject(user.getUsername())
-                .issuer(ISSUER)
-                .issueTime(Date.from(now))
-                .expirationTime(Date.from(now.plus(REFRESH_TOKEN_TTL)))
-                .jwtID(UUID.randomUUID().toString())
-                .claim("typ", TokenType.REFRESH.name())
-                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder().subject(user.getUsername()).issuer(ISSUER).issueTime(Date.from(now)).expirationTime(Date.from(now.plus(REFRESH_TOKEN_TTL))).jwtID(UUID.randomUUID().toString()).claim("typ", TokenType.REFRESH.name()).build();
         return signHS512Token(claims, REFRESH_SECRET_KEY_B64);
     }
 
@@ -160,12 +144,10 @@ public class AuthService {
 
             // 4. Check if token is invalidated
             String jti = claims.getJWTID();
-            Optional<InvalidatedToken> invalidatedTokenOpt = invalidatedTokenService.getInvalidatedTokenById(jti);
-            if (invalidatedTokenOpt.isPresent()) {
-                log.error("Token has been invalidated: {}", jti);
+            if (tokenBlacklist.isBlacklisted(jti)) {
+                log.error(":: Token has been invalidated ::");
                 throw new AppException(ErrorCode.TOKEN_INVALIDATED);
             }
-
             return signedJWT;
         }
         // List exceptions have to caught: [ParseException, JOSEException] + others: [AppException, Exception]
@@ -215,10 +197,7 @@ public class AuthService {
         }
         String accessToken = generateAccessToken(user);
         String refreshToken = generateRefreshToken(user);
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        return AuthResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
     public void logout(String bearerToken) {
@@ -229,11 +208,12 @@ public class AuthService {
         try {
             String jti = signedJWT.getJWTClaimsSet().getJWTID();
             var expDate = signedJWT.getJWTClaimsSet().getExpirationTime().toInstant();
-            if (!invalidatedTokenService.isInvalidated(jti)) {
-                invalidatedTokenService.createInvalidatedToken(jti, expDate);
-            } else {
-                log.warn("Token already invalidated: {}", jti);
+
+            if (tokenBlacklist.isBlacklisted(jti)) {
+                log.warn("Token already blacklisted: {}", jti);
+                return;
             }
+            tokenBlacklist.blacklist(jti, expDate);
         } catch (ParseException e) {
             log.error("Invalid JWT ID: {}", e.getMessage());
             throw new AppException(ErrorCode.MALFORMED_TOKEN);
@@ -246,22 +226,19 @@ public class AuthService {
             SignedJWT signedJWT = verifyRefreshToken(refreshTokenRequest.getToken());
             String jti = signedJWT.getJWTClaimsSet().getJWTID();
             var expDate = signedJWT.getJWTClaimsSet().getExpirationTime().toInstant();
-            invalidatedTokenService.createInvalidatedToken(jti, expDate);
+            tokenBlacklist.blacklist(jti, expDate);
 
             String username = signedJWT.getJWTClaimsSet().getSubject();
             User existedUser = userService.getUserByUsername(username);
-            if(existedUser == null) {
+            if (existedUser == null) {
                 log.error("Invalid username for token :: {}", username);
                 throw new AppException(ErrorCode.UNAUTHENTICATED);
             }
 
-            String accessToken= generateAccessToken(existedUser);
+            String accessToken = generateAccessToken(existedUser);
             String refreshToken = generateRefreshToken(existedUser);
 
-            return AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .build();
+            return AuthResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
         } catch (ParseException e) {
             log.error("Invalid JWT Subject: {}", e.getMessage());
             throw new AppException(ErrorCode.MALFORMED_TOKEN);

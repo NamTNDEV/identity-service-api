@@ -1,6 +1,6 @@
 package com.namudev.identity_service.config;
 
-import com.namudev.identity_service.service.InvalidatedTokenService;
+import com.namudev.identity_service.service.RedisTokenBlacklist;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
@@ -32,7 +32,7 @@ import java.util.Base64;
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 public class SecurityConfig {
-    InvalidatedTokenService invalidatedTokenService;
+    RedisTokenBlacklist redisTokenBlacklist;
 
     String[] PUBLIC_URLS = {
             "users/me",
@@ -100,7 +100,7 @@ public class SecurityConfig {
         var defaultValidator = JwtValidators.createDefaultWithIssuer(ISSUER);
         nimbus.setJwtValidator(defaultValidator);
 
-        return new CustomJwtDecoder(nimbus, invalidatedTokenService);
+        return new CustomJwtDecoder(nimbus, redisTokenBlacklist);
     }
 
     @Bean

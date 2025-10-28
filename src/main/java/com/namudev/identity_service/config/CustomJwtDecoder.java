@@ -1,6 +1,6 @@
 package com.namudev.identity_service.config;
 
-import com.namudev.identity_service.service.InvalidatedTokenService;
+import com.namudev.identity_service.service.RedisTokenBlacklist;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -11,7 +11,7 @@ import org.springframework.security.oauth2.jwt.JwtException;
 @Slf4j
 public record CustomJwtDecoder(
         JwtDecoder jwtDecoder,
-        InvalidatedTokenService invalidatedTokenService
+        RedisTokenBlacklist redisTokenBlacklist
 ) implements JwtDecoder {
     @Override
     public Jwt decode(String token) throws JwtException {
@@ -25,7 +25,7 @@ public record CustomJwtDecoder(
         }
 
         String jti = jwt.getId();
-        if(jti != null && invalidatedTokenService.isInvalidated(jti)) {
+        if (jti != null && redisTokenBlacklist.isBlacklisted(jti)) {
             log.error("Invalidated token used with jti: {}", jti);
             OAuth2Error error = new OAuth2Error(
                     "token_invalidated",
