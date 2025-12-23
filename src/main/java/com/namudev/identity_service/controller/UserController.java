@@ -25,6 +25,11 @@ public class UserController {
     UserService userService;
     UserMapper userMapper;
 
+    @GetMapping("/hello-world")
+    public String helloWorld() {
+        return "Hello, World!";
+    }
+
 //    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping()
     ApiResponse<List<UserResponse>> getUserList() {

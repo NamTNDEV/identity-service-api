@@ -61,4 +61,13 @@ public class AuthController {
                 .data(authService.refreshToken(refreshTokenRequest))
                 .build();
     }
+
+    @PostMapping("/outbound/authenticate")
+    public ApiResponse<AuthResponse> outboundAuthenticate(@RequestParam("code") String code) {
+        return ApiResponse.<AuthResponse>builder()
+                .code(200)
+                .message("Outbound authentication successful")
+                .data(authService.outboundAuthenticate(code))
+                .build();
+    }
 }

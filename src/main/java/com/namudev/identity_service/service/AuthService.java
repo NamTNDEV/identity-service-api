@@ -1,5 +1,6 @@
 package com.namudev.identity_service.service;
 
+import com.namudev.identity_service.dto.request.ExchangeTokenRequest;
 import com.namudev.identity_service.dto.request.IntrospectRequest;
 import com.namudev.identity_service.dto.request.LoginRequest;
 import com.namudev.identity_service.dto.request.RefreshTokenRequest;
@@ -9,6 +10,7 @@ import com.namudev.identity_service.entity.User;
 import com.namudev.identity_service.enums.TokenType;
 import com.namudev.identity_service.exception.AppException;
 import com.namudev.identity_service.exception.ErrorCode;
+import com.namudev.identity_service.repository.OutboundIdentityClient;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -54,8 +56,25 @@ public class AuthService {
     @Value("${jwt.refresh.secret-key}")
     String REFRESH_SECRET_KEY_B64;
 
+    @NonFinal
+    @Value("${google.oauth2.client_secret}")
+    String CLIENT_SECRET;
+
+    @NonFinal
+    @Value("${google.oauth2.client_id}")
+    String CLIENT_ID;
+
+    @NonFinal
+    @Value("${google.oauth2.redirect_uri}")
+    String REDIRECT_URI;
+
+    @NonFinal
+    @Value("${google.oauth2.grant_type}")
+    String GRANT_TYPE;
+
     UserService userService;
     RedisTokenBlacklist tokenBlacklist;
+    OutboundIdentityClient outboundIdentityClient;
 
     private String buildScopeString(Set<Role> roles) {
         if (roles == null || roles.isEmpty()) {
@@ -243,5 +262,32 @@ public class AuthService {
             log.error("Invalid JWT Subject: {}", e.getMessage());
             throw new AppException(ErrorCode.MALFORMED_TOKEN);
         }
+    }
+
+    public AuthResponse outboundAuthenticate(String code) {
+        log.info("::: Processing outbound authentication for code :: {}", code);
+
+        var response = outboundIdentityClient.exchangeToken(
+                ExchangeTokenRequest.builder()
+                        .clientSecret(CLIENT_SECRET)
+                        .redirectUri(REDIRECT_URI)
+                        .clientId(CLIENT_ID)
+                        .grantType(GRANT_TYPE)
+                        .code(code)
+                        .build()
+        );
+
+//        var response = outboundIdentityClient.exchangeToken(
+//                code,
+//                CLIENT_ID,
+//                CLIENT_SECRET,
+//                REDIRECT_URI,
+//                GRANT_TYPE
+//        );
+
+        return AuthResponse.builder()
+                .accessToken(response.getAccessToken())
+                .refreshToken(response.getRefreshToken())
+                .build();
     }
 }
