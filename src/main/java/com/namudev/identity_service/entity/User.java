@@ -15,8 +15,8 @@ import java.util.Set;
 @AllArgsConstructor()
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@ToString
 @Builder
+@Table(name = "users")
 public class User {
 
     @Id
@@ -37,5 +37,10 @@ public class User {
     LocalDate dob;
 
     @ManyToMany
+    @JoinTable(
+            name = "users_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_name")
+    )
     Set<Role> roles;
 }

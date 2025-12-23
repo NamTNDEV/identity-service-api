@@ -18,6 +18,7 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -51,11 +52,10 @@ public class AppConfig {
                 log.warn("User with name {} already exists", ADMIN);
                 return;
             }
-
             var allPermissions = permissionRepo.findAll();
             var adminRole = roleRepo.findByName("ADMIN").map(
                     r -> {
-                        if (r.getPermissions() == null || r.getPermissions().isEmpty()) {
+                        if (r.getPermissions() == null) {
                             r.setPermissions(new HashSet<>(allPermissions));
                             return roleRepo.save(r);
                         }
@@ -70,12 +70,16 @@ public class AppConfig {
                     )
             );
 
+            Set<Role> roles = new HashSet<>();
+            roles.add(adminRole);
+
+
             var userAdmin = User.builder()
                     .username(ADMIN)
                     .password(passwordEncoder.encode(ADMIN))
-                    .roles(Set.of(adminRole))
+                    .dob(LocalDate.of(2000, 1, 1))
+                    .roles(roles)
                     .build();
-
             userRepo.save(userAdmin);
             log.info("Admin user created with username: {} and password: {}", ADMIN, ADMIN);
         };

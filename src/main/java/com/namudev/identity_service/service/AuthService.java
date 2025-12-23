@@ -1,16 +1,14 @@
 package com.namudev.identity_service.service;
 
-import com.namudev.identity_service.dto.request.ExchangeTokenRequest;
-import com.namudev.identity_service.dto.request.IntrospectRequest;
-import com.namudev.identity_service.dto.request.LoginRequest;
-import com.namudev.identity_service.dto.request.RefreshTokenRequest;
+import com.namudev.identity_service.dto.request.*;
 import com.namudev.identity_service.dto.response.AuthResponse;
 import com.namudev.identity_service.entity.Role;
 import com.namudev.identity_service.entity.User;
 import com.namudev.identity_service.enums.TokenType;
 import com.namudev.identity_service.exception.AppException;
 import com.namudev.identity_service.exception.ErrorCode;
-import com.namudev.identity_service.repository.OutboundIdentityClient;
+import com.namudev.identity_service.repository.http_client.OutboundIdentityClient;
+import com.namudev.identity_service.repository.http_client.OutboundUserClient;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -22,6 +20,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cglib.core.Local;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,6 +28,7 @@ import org.springframework.stereotype.Service;
 import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 
 @Slf4j
@@ -75,6 +75,7 @@ public class AuthService {
     UserService userService;
     RedisTokenBlacklist tokenBlacklist;
     OutboundIdentityClient outboundIdentityClient;
+    OutboundUserClient outboundUserClient;
 
     private String buildScopeString(Set<Role> roles) {
         if (roles == null || roles.isEmpty()) {
@@ -85,7 +86,7 @@ public class AuthService {
         roles.forEach(role -> {
             joiner.add("ROLE_" + role.getName());
             var permissions = role.getPermissions();
-            if (permissions != null && !permissions.isEmpty()) {
+            if (permissions != null) {
                 permissions.forEach(permission -> joiner.add(permission.getName()));
             }
         });
@@ -277,13 +278,22 @@ public class AuthService {
                         .build()
         );
 
-//        var response = outboundIdentityClient.exchangeToken(
-//                code,
-//                CLIENT_ID,
-//                CLIENT_SECRET,
-//                REDIRECT_URI,
-//                GRANT_TYPE
-//        );
+        var userInfo = outboundUserClient.getUserInfo(
+                response.getAccessToken(),
+                "json"
+        );
+
+        if(!userService.isUserExist(userInfo.getEmail())) {
+            userService.createUser(
+                    UserCreationRequest.builder()
+                            .username(userInfo.getEmail())
+                            .password(UUID.randomUUID().toString()) // Random password since we don't use it
+                            .lastName(userInfo.getFamilyName())
+                            .firstName(userInfo.getGivenName())
+                            .dob(LocalDate.of(1970, 1, 1)) // Default DOB
+                            .build()
+            );
+        }
 
         return AuthResponse.builder()
                 .accessToken(response.getAccessToken())

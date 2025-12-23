@@ -9,6 +9,7 @@ import com.namudev.identity_service.exception.AppException;
 import com.namudev.identity_service.exception.ErrorCode;
 import com.namudev.identity_service.mapper.UserMapper;
 import com.namudev.identity_service.repository.UserRepo;
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -44,6 +45,7 @@ public class UserService {
         return userRepo.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
+    @Transactional
     public User createUser(UserCreationRequest userRequest) {
         if(userRepo.existsByUsername(userRequest.getUsername())) {
             throw new AppException(ErrorCode.USER_EXISTED);

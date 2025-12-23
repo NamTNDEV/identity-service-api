@@ -1,9 +1,6 @@
 package com.namudev.identity_service.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -23,5 +20,10 @@ public class Role {
     String description;
 
     @ManyToMany
+            @JoinTable(
+                    name = "roles_permissions",
+                    joinColumns = @JoinColumn(name = "role_name"),
+                    inverseJoinColumns = @JoinColumn(name = "permission_name")
+            )
     Set<Permission> permissions;
 }
