@@ -45,12 +45,12 @@ public class SecurityConfig {
             "/users/me",
             "/auth/login",
             "/auth/refresh-token",
-            "/auth/outbound/authenticate"
+            "/auth/outbound/authenticate",
+            "/users/**",
     };
 
     String[] PRIVATE_URLS = {
             "/auth/introspect",
-            "/users/**",
             "/roles/**",
             "/permissions/**",
     };

@@ -42,7 +42,7 @@ public class InvalidatedTokenCleanupJob {
 //      0 30 9-17 * * MON-FRI   9h30–17h30, thứ Hai–thứ Sáu
 //      0 0 0 1 * *             0h ngày đầu tiên mỗi tháng
 
-    @Scheduled(cron = "* * 0 * * ?")
+//    @Scheduled(cron = "* * 0 * * ?")
     public void run() {
         try {
             int deleted = invalidatedTokenService.purgeExpiredToken();

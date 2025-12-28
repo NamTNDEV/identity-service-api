@@ -14,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -55,7 +56,15 @@ public class UserService {
         Set<Role> roles = new HashSet<>();
         roles.add(roleService.getRoleByName(RoleEnum.USER.name()));
         user.setRoles(roles);
-        return userRepo.save(user);
+
+        try {
+            user = userRepo.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            log.error("Error creating user: {}", e.getMessage());
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        return user;
     }
 
     public User updateUser(String id, UserUpdateRequest userRequest) {

@@ -283,8 +283,10 @@ public class AuthService {
                 "json"
         );
 
+        User onBoardedUser;
+
         if(!userService.isUserExist(userInfo.getEmail())) {
-            userService.createUser(
+            onBoardedUser = userService.createUser(
                     UserCreationRequest.builder()
                             .username(userInfo.getEmail())
                             .password(UUID.randomUUID().toString()) // Random password since we don't use it
@@ -293,11 +295,16 @@ public class AuthService {
                             .dob(LocalDate.of(1970, 1, 1)) // Default DOB
                             .build()
             );
+        } else {
+            onBoardedUser = userService.getUserByUsername(userInfo.getEmail());
         }
 
+        String accessToken = generateAccessToken(onBoardedUser);
+        String refreshToken = generateRefreshToken(onBoardedUser);
+
         return AuthResponse.builder()
-                .accessToken(response.getAccessToken())
-                .refreshToken(response.getRefreshToken())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .build();
     }
 }
